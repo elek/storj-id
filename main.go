@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/alecthomas/kong"
 	"golang.org/x/exp/maps"
 	"os"
 	"sort"
@@ -21,7 +22,8 @@ import (
 )
 
 func main() {
-	err := run()
+	ktx := kong.Parse(&Main{})
+	err := ktx.Run()
 	if err != nil {
 		panic(err)
 	}
@@ -30,8 +32,14 @@ func main() {
 var base32Encoding = base32.StdEncoding.WithPadding(base32.NoPadding)
 var pathEncoding = base32.NewEncoding("abcdefghijklmnopqrstuvwxyz234567").WithPadding(base32.NoPadding)
 
-func run() error {
-	source := os.Args[1]
+type Main struct {
+	Source string `arg:"" help:"the encoded bytes to be decoded"`
+	From   string `help:"define the format of the source bytea"`
+	To     string `help:"pick the used destination format"`
+}
+
+func (m Main) Run() error {
+	source := m.Source
 
 	decodings := map[string]func(string) ([]byte, error){
 		"remote-id": getRemoteID,
@@ -72,20 +80,36 @@ func run() error {
 		"base32": base32Encoding.EncodeToString,
 		"base64": base64.URLEncoding.EncodeToString,
 		"path":   pathEncoding.EncodeToString,
+		"binary": func(bytes []byte) string {
+			return string(bytes)
+		},
 	}
 
 	keys := maps.Keys(decodings)
 	sort.Strings(keys)
 	for _, id := range keys {
+		if m.From != "" && m.From != id {
+			continue
+		}
 		decoded, err := decodings[id](source)
 		if err == nil {
-			fmt.Printf("Using %s as %s\n", source, id)
+			if m.From == "" {
+				fmt.Printf("Using %s as %s\n", source, id)
+			}
 			ekeys := maps.Keys(encodings)
 			sort.Strings(ekeys)
 			for _, ei := range ekeys {
+				if m.To != "" && m.To != ei {
+					continue
+				}
 				decoded := encodings[ei](decoded)
 				if decoded != "" {
-					fmt.Println("  ", ei, decoded)
+					if m.To != "" {
+						fmt.Print(decoded)
+					} else {
+						fmt.Println("  ", ei, decoded)
+					}
+
 				}
 			}
 

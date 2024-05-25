@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/alecthomas/kong v0.9.0 // indirect
 	github.com/calebcase/tmpfile v1.0.3 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
