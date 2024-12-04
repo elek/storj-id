@@ -19,6 +19,7 @@ import (
 	"storj.io/drpc"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 func main() {
@@ -51,10 +52,11 @@ func (m Main) Run() error {
 		"auth-base32": func(s string) ([]byte, error) {
 			return base32Encoding.DecodeString(strings.ToUpper(s))
 		},
-		"base64": base64.URLEncoding.DecodeString,
-		"hex":    hex.DecodeString,
-		"path":   pathEncoding.DecodeString,
-		"file":   readFromFile,
+		"base64":  base64.URLEncoding.DecodeString,
+		"base64s": base64.StdEncoding.DecodeString,
+		"hex":     hex.DecodeString,
+		"path":    pathEncoding.DecodeString,
+		"file":    readFromFile,
 	}
 
 	encodings := map[string]func([]byte) string{
@@ -63,7 +65,7 @@ func (m Main) Run() error {
 		"nodeid": func(bytes []byte) string {
 			fromBytes, err := storj.NodeIDFromBytes(bytes)
 			if err != nil {
-				return err.Error()
+				return ""
 			}
 			return fromBytes.String()
 		},
@@ -73,13 +75,20 @@ func (m Main) Run() error {
 			}
 			fromBytes, err := storj.NodeIDFromBytes(bytes)
 			if err != nil {
-				return err.Error()
+				return ""
 			}
 			return fromBytes.String() + "@" + source
 		},
 		"base32": base32Encoding.EncodeToString,
 		"base64": base64.URLEncoding.EncodeToString,
 		"path":   pathEncoding.EncodeToString,
+		"string": func(bytes []byte) string {
+			raw := string(bytes)
+			if utf8.ValidString(raw) {
+				return raw
+			}
+			return ""
+		},
 		"binary": func(bytes []byte) string {
 			return string(bytes)
 		},
