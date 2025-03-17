@@ -49,7 +49,7 @@ func (m Main) Run() error {
 			result, _, err := base58.CheckDecode(s)
 			return result, err
 		},
-		"base32": base32Encoding.DecodeString,
+		"base32/piece-id": base32Encoding.DecodeString,
 		"auth-base32": func(s string) ([]byte, error) {
 			return base32Encoding.DecodeString(strings.ToUpper(s))
 		},
@@ -80,9 +80,9 @@ func (m Main) Run() error {
 			}
 			return fromBytes.String() + "@" + source
 		},
-		"base32": base32Encoding.EncodeToString,
-		"base64": base64.URLEncoding.EncodeToString,
-		"path":   pathEncoding.EncodeToString,
+		"base32/piece-id": base32Encoding.EncodeToString,
+		"base64":          base64.URLEncoding.EncodeToString,
+		"path":            pathEncoding.EncodeToString,
 		"string": func(bytes []byte) string {
 			raw := string(bytes)
 			if utf8.ValidString(raw) {
