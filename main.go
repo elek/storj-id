@@ -37,6 +37,7 @@ type Main struct {
 	Source string `arg:"" help:"the encoded bytes to be decoded"`
 	From   string `help:"define the format of the source bytea"`
 	To     string `help:"pick the used destination format"`
+	NL     bool   `help:"by default if --from and --to are set, new line is not added (to make it easier to use in scripts). This flag adds the new line back"`
 }
 
 func (m Main) Run() error {
@@ -115,6 +116,9 @@ func (m Main) Run() error {
 				if decoded != "" {
 					if m.To != "" {
 						fmt.Print(decoded)
+						if m.NL {
+							fmt.Println()
+						}
 					} else {
 						fmt.Println("  ", ei, decoded)
 					}
