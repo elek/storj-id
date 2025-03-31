@@ -34,67 +34,74 @@ var base32Encoding = base32.StdEncoding.WithPadding(base32.NoPadding)
 var pathEncoding = base32.NewEncoding("abcdefghijklmnopqrstuvwxyz234567").WithPadding(base32.NoPadding)
 
 type Main struct {
-	Source string `arg:"" help:"the encoded bytes to be decoded"`
+	Source string `arg:"" help:"the encoded bytes to be decoded" default:""`
 	From   string `help:"define the format of the source bytea"`
 	To     string `help:"pick the used destination format"`
 	NL     bool   `help:"by default if --from and --to are set, new line is not added (to make it easier to use in scripts). This flag adds the new line back"`
+	MCP    bool   `help:"Start Model Context Protocol server, instead of converting"`
+}
+
+var decodings = map[string]func(string) ([]byte, error){
+	"remote-id": getRemoteID,
+	"base58": func(s string) ([]byte, error) {
+		result, _, err := base58.CheckDecode(s)
+		return result, err
+	},
+	"base32":   base32Encoding.DecodeString,
+	"piece-id": base32Encoding.DecodeString,
+	"auth-base32": func(s string) ([]byte, error) {
+		return base32Encoding.DecodeString(strings.ToUpper(s))
+	},
+	"base64":  base64.URLEncoding.DecodeString,
+	"base64s": base64.StdEncoding.DecodeString,
+	"hex":     hex.DecodeString,
+	"path":    pathEncoding.DecodeString,
+	"file":    readFromFile,
+}
+
+var encodings = map[string]func([]byte) string{
+	"hex":    hex.EncodeToString,
+	"base58": base58.Encode,
+	"nodeid": func(bytes []byte) string {
+		fromBytes, err := storj.NodeIDFromBytes(bytes)
+		if err != nil {
+			return ""
+		}
+		return fromBytes.String()
+	},
+
+	"base32":   base32Encoding.EncodeToString,
+	"piece-id": base32Encoding.EncodeToString,
+	"base64":   base64.URLEncoding.EncodeToString,
+	"path":     pathEncoding.EncodeToString,
+	"string": func(bytes []byte) string {
+		raw := string(bytes)
+		if utf8.ValidString(raw) {
+			return raw
+		}
+		return ""
+	},
+	"binary": func(bytes []byte) string {
+		return string(bytes)
+	},
 }
 
 func (m Main) Run() error {
+	if m.MCP {
+		return RunMCP()
+	}
 	source := m.Source
 
-	decodings := map[string]func(string) ([]byte, error){
-		"remote-id": getRemoteID,
-		"base58": func(s string) ([]byte, error) {
-			result, _, err := base58.CheckDecode(s)
-			return result, err
-		},
-		"base32/piece-id": base32Encoding.DecodeString,
-		"auth-base32": func(s string) ([]byte, error) {
-			return base32Encoding.DecodeString(strings.ToUpper(s))
-		},
-		"base64":  base64.URLEncoding.DecodeString,
-		"base64s": base64.StdEncoding.DecodeString,
-		"hex":     hex.DecodeString,
-		"path":    pathEncoding.DecodeString,
-		"file":    readFromFile,
-	}
-
-	encodings := map[string]func([]byte) string{
-		"hex":    hex.EncodeToString,
-		"base58": base58.Encode,
-		"nodeid": func(bytes []byte) string {
-			fromBytes, err := storj.NodeIDFromBytes(bytes)
-			if err != nil {
-				return ""
-			}
-			return fromBytes.String()
-		},
-		"nodeurl": func(bytes []byte) string {
-			if !strings.Contains(source, ":") {
-				return ""
-			}
-			fromBytes, err := storj.NodeIDFromBytes(bytes)
-			if err != nil {
-				return ""
-			}
-			return fromBytes.String() + "@" + source
-		},
-		"base32/piece-id": base32Encoding.EncodeToString,
-		"base64":          base64.URLEncoding.EncodeToString,
-		"path":            pathEncoding.EncodeToString,
-		"string": func(bytes []byte) string {
-			raw := string(bytes)
-			if utf8.ValidString(raw) {
-				return raw
-			}
+	encodings["nodeurl"] = func(bytes []byte) string {
+		if !strings.Contains(source, ":") {
 			return ""
-		},
-		"binary": func(bytes []byte) string {
-			return string(bytes)
-		},
+		}
+		fromBytes, err := storj.NodeIDFromBytes(bytes)
+		if err != nil {
+			return ""
+		}
+		return fromBytes.String() + "@" + source
 	}
-
 	keys := maps.Keys(decodings)
 	sort.Strings(keys)
 	for _, id := range keys {

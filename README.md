@@ -17,3 +17,11 @@ Using 12HShX9CtL9Lm2HwpvyTE1De6ievDf2TVkMgHRGnHsvEQ4pDXMF as base58
 Program will try to parse the input string with multiple algorithm, and if it worked, it re-encode 
 with all known decoding type.
 
+# Model Context Protocol
+
+`storj-id` also contains an experimental MCP server. You can try with:
+
+```
+claude mcp add --scope user storj-id storj-id --mcp
+```
+
